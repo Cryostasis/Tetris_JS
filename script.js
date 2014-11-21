@@ -168,15 +168,16 @@ function get_color(clr)
 //====================================================================
 
 var flag_up = false, flag_down = false, flag_left = false, flag_right = false;
+var cnt_up = 0, cnt_down = 0, cnt_left = 0, cnt_right = 0;
 
 function key_down()
 {
 	switch (event.keyCode)
 	{
-		case 37: fig_left();		flag_left 	= true;	break;
-		case 38: fig_rotate();	flag_up 	= true; break;
-		case 39: fig_right();	flag_right  = true;	break;
-		case 40: 				flag_down 	= true; break;
+		case 37: if (!flag_left) 	fig_left();		flag_left 	= true;  break;
+		case 38: if (!flag_up) 		fig_rotate();	flag_up 	= true;  break;
+		case 39: if (!flag_right) 	fig_right();	flag_right  = true;  break;
+		case 40:  									flag_down 	= true;  break;
 	}
 }
 
@@ -184,10 +185,10 @@ function key_up()
 {
 	switch (event.keyCode)
 	{
-		case 37: flag_left 	= false;  	break;
-		case 38: flag_up 	= false; 	break;
-		case 39: flag_right = false;  	break;
-		case 40: flag_down 	= false;  	break;
+		case 37: flag_left 	= false; cnt_left 	= 0;  	break;
+		case 38: flag_up 	= false; cnt_up 	= 0; 	break;
+		case 39: flag_right = false; cnt_right 	= 0; 	break;
+		case 40: flag_down 	= false; cnt_down 	= 0;  	break;
 	}
 }
 
@@ -386,22 +387,38 @@ function fig_rotate()
 
 var ticks = 0;
 var main_cycle;
-var result = 0;
+var result = 20;
 
 function game_tick()
 {
-	ticks++;
+	ticks++; 
 
+	if (flag_right)
+	{
+		cnt_right++; 	
+		if (+ticks % 5 == 0 && cnt_right > 10)
+			fig_right();
+	}
+	if (flag_left)
+	{
+		cnt_left++; 
+		if (+ticks % 5 == 0 && cnt_left  > 10)
+			fig_left();
+	}
+	if (flag_up)
+	{	
+		cnt_up++;
+		if (+ticks % 5 == 0 && cnt_up    > 10)
+			fig_rotate();
+	}
 	if (flag_down) 
 	{
 		if(+ticks % 5 == 0)
 			fig_down();
 	}
 	else
-	{
-		if (+ticks % 30 == 0)
+		if (+ticks % +Math.max(10, 50 - result).toFixed(0) == 0)
 			fig_down();
-	}
 	draw_all();
 }
 
