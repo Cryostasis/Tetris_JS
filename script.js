@@ -9,9 +9,10 @@ var COL_PINK = 5;
 var COL_LIGHT_BLUE = 6;
 var COL_LIGHT_GREEN = 7;
 var COL_BLACK = 8;
+var COL_BCG = 9;
 
-var BACKGROUND_CLR = 0;
-var BORDER_CLR = 8;
+var BACKGROUND_CLR = COL_BCG;
+var BORDER_CLR = COL_BLACK;
 
 var WND_WIDTH = 10;
 var WND_HEIGHT = 18;
@@ -87,8 +88,7 @@ function figure(type, clr)
 	this.f_color = clr;
 	this.f_type = type;
 	this.X = (WND_WIDTH / 2 - 1).toFixed(0);
-	this.Y = -FIG_MAP_SIZE + 2;
-	//this.map = fig_maps[type].slice();
+	this.Y = -FIG_MAP_SIZE + 3;
 	
 	this.map = [];
 	for (var i = 0; i < FIG_MAP_SIZE; i++)
@@ -132,6 +132,7 @@ figure.prototype.Left = function()
 
 //=====================================================================
 
+var new_fig;
 var cur_fig;
 var field = [];
 
@@ -159,6 +160,7 @@ function get_color(clr)
 		case COL_LIGHT_BLUE.toString() 	: return "cyan";	break;
 		case COL_LIGHT_GREEN.toString() : return "#00FF00";	break;
 		case COL_BLACK.toString() 		: return "black";	break;
+		case COL_BCG.toString() 		: return "#FFFFCC";	break;
 		default							: console.log(clr); return -1;		
 	}
 }
@@ -200,9 +202,18 @@ function draw_rect(x, y, w, h, clr)
 	ctx.fillRect(x + 1, y + 1, w - 1, h - 1);
 }
 
+function draw_text(text, x, y, clr, size)
+{
+	ctx.font = "bold " + size + "px sans-serif";
+	//ctx.fontstyle = "bold";
+	ctx.fillStyle = get_color(clr);
+	ctx.fillText(text, x, y);
+}
+
 function draw_all()
 {
-	draw_rect(0, 0, example.width, example.height, BACKGROUND_CLR);
+	draw_rect(-1, -1, example.width, example.height, BACKGROUND_CLR);
+
 	for (var i = 0; i < WND_HEIGHT + 2; i++)
 		for (var j = 0; j < WND_WIDTH + 2; j++)
 		{
@@ -213,6 +224,21 @@ function draw_all()
 			if (field[i][j] != 0)
 				draw_rect(j * SQR_SIZE, i * SQR_SIZE, SQR_SIZE, SQR_SIZE, field[i][j]);
 		}
+
+	draw_rect(-1, -1, SQR_SIZE, example.height, BORDER_CLR);
+	draw_rect(-1, example.height - SQR_SIZE, example.width, SQR_SIZE, BORDER_CLR);
+	draw_rect(example.width - SQR_SIZE, -1, SQR_SIZE, example.height, BORDER_CLR);
+	draw_rect(SQR_SIZE * (WND_WIDTH + 1), -1, SQR_SIZE, example.height, BORDER_CLR);
+	draw_rect(SQR_SIZE * (WND_WIDTH + 1), -1, example.width, SQR_SIZE, BORDER_CLR);
+	draw_rect(SQR_SIZE * (WND_WIDTH + 1), example.width - (WND_WIDTH + 2) * SQR_SIZE, example.width, SQR_SIZE, BORDER_CLR);
+
+	for (var i = 0; i < FIG_MAP_SIZE; i++)
+		for (var j = 0; j < FIG_MAP_SIZE; j++)
+			if (new_fig.map[i][j] != 0)
+				draw_rect((j + WND_WIDTH + 2) * SQR_SIZE, (i + 1) * SQR_SIZE, SQR_SIZE, SQR_SIZE, new_fig.f_color);
+
+	draw_text("Score: " + result, SQR_SIZE * (WND_WIDTH + 2) + 10, SQR_SIZE * (FIG_MAP_SIZE + 3) + 5, BORDER_CLR, 19);
+
 }
 
 //==================================================================
@@ -232,7 +258,10 @@ function check_intercept()
 {
 	for (var i = 0; i < FIG_MAP_SIZE; i++)
 		for (var j = 0; j < FIG_MAP_SIZE; j++)
-			if (i + cur_fig.Y != 0 && cur_fig.map[i][j] != 0 && j + cur_fig.X >= 0 && i + cur_fig.Y >= 0 && field[+i + +cur_fig.Y][+j + +cur_fig.X] != 0)
+			if (cur_fig.map[i][j] != 0 
+				&& j + cur_fig.X >= 0 
+				&& i + cur_fig.Y >= 0 
+				&& field[+i + +cur_fig.Y][+j + +cur_fig.X] != 0)
 				return true;
 
 	return false;
@@ -265,18 +294,34 @@ function create_fig()
 {
 	var tp = +rand(FIG_TYPE_CNT - 1);
 	var cl = +tp + 1;
-	cur_fig = new figure(tp, cl);
+	return new figure(tp, cl);
+}
+
+function fail()
+{
+	clearInterval(main_cycle);
+	alert(result);
 }
 
 function fig_run()
 {
 	if (cur_fig.Y < 0)
 	{
-		clearInterval(main_cycle);
-		alert(result);
+		fail();
 		return;
 	}
-	create_fig();
+
+	cur_fig = Object.create(new_fig);
+	cur_fig.map = [];
+	for (var i = 0; i < FIG_MAP_SIZE; i++)
+		cur_fig.map[i] = new_fig.map[i].slice();
+	new_fig = create_fig();
+
+	if (check_intercept())
+	{
+		fail();
+		return;
+	}
 }
 
 function fig_right()
@@ -306,15 +351,37 @@ function fig_down()
 }
 
 function fig_rotate()
-{
+{	
+	function aux()
+	{
+		cur_fig.rotate();
+		cur_fig.rotate();
+		cur_fig.rotate();
+	}
 	cur_fig.rotate();
 	if (check_intercept())
 		if (+cur_fig.X < +WND_WIDTH / 2)
-			while (check_intercept())
+		{
+			if (check_intercept())
+			{
 				cur_fig.Right();
+				if (check_intercept())
+				{
+					cur_fig.Left();
+					aux();
+				}
+			}
+		}
 		else
-			while (check_intercept())
+			if (check_intercept())
+			{
 				cur_fig.Left();
+				if (check_intercept())
+				{
+					cur_fig.Right();
+					aux();
+				}
+			}
 }
 
 var ticks = 0;
@@ -343,7 +410,8 @@ function game_cycle()
 	result = 0;
 
 	init_map();
-	create_fig();
+	new_fig = create_fig();
+	cur_fig = create_fig();
 
 	tick = 0;
 	main_cycle = setInterval(game_tick, 10);
