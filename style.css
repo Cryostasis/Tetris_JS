@@ -1,0 +1,9 @@
+body {
+	position: relative;
+}
+
+.cnv {
+	position: absolute;
+	top: 100px;
+	left: 30%;
+}
